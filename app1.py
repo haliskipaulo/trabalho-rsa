@@ -8,6 +8,7 @@
 from rsa import get_keys, encrypt, decrypt
 from flask import Flask, request, jsonify
 import requests as req
+from time import sleep
 
 app = Flask(__name__)
 
@@ -75,12 +76,13 @@ def receive_message():
     print(f"Mensagem criptografada recebida: {encrypted_message_received}")
 
     try:
-        decrypted_message = decrypt(encrypted_message_received, D, N_app1)
+        decrypted_message = decrypt(encrypted_message_received, N_app1, D)
         print(f"Mensagem descriptografada: {decrypted_message}")
         return jsonify({"message": "Mensagem recebida e descriptografada com sucesso!", "decrypted_content": decrypted_message}), 200
     except Exception as e:
         print(f"Erro durante a descriptografia: {e}")
         return jsonify({"error": f"Erro ao descriptografar mensagem: {e}"}), 500
+
 
 def initiate_key_exchange():
     if not URL_APP2:
@@ -98,8 +100,26 @@ def initiate_key_exchange():
     except Exception as e:
         print(f"Ocorreu um erro inesperado: {e}")
 
+
+@app.route('/start_key_exchange', methods=['GET'])
+def start_key_exchange_endpoint():
+    print("Iniciando troca de chaves...")
+
+    try:
+        response_data = initiate_key_exchange() # Certifique-se que initiate_key_exchange envia suas chaves e recebe as da outra app
+        return jsonify({"status": "Key exchange initiated", "response_from_other_app": response_data}), 200
+    except Exception as e:
+        return jsonify({"status": "Error during key exchange", "error": str(e)}), 500
+
 if __name__ == '__main__':
     port = 5000
 
+    sleep(5)
+
+    print(f"Minhas chaves: N={N_app1}, E={E_app1}, D={D}")
+    print(f"Aplicação rodando na porta {port}")
+    print(f"A outra aplicação está em: {URL_APP2}")
 
     app.run(debug=True, port=port, use_reloader=False)
+
+    initiate_key_exchange()

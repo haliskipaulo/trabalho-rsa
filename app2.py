@@ -18,8 +18,6 @@ N_app2 = keys[0]
 E_app2 = keys[1]
 D = keys[2]
 
-payload_keys = {'N': N_app2}
-
 URL_APP1 = 'http://localhost:5000'
 
 N_app1 = None
@@ -101,6 +99,17 @@ def initiate_key_exchange():
     except Exception as e:
         print(f"Ocorreu um erro inesperado: {e}")
 
+@app.route('/start_key_exchange', methods=['GET'])
+def start_key_exchange_endpoint(): 
+    print("Iniciando troca de chaves...")
+
+    try:
+        response_data = initiate_key_exchange()
+        return jsonify({"status": "Key exchange initiated", "response_from_other_app": response_data}), 200
+    except Exception as e:
+        return jsonify({"status": "Error during key exchange", "error": str(e)}), 500
+
+
 if __name__ == '__main__':
     port = 5001    
 
@@ -111,5 +120,3 @@ if __name__ == '__main__':
     print(f"A outra aplicação está em: {URL_APP1}")
 
     app.run(debug=True, port=port, use_reloader=False)
-
-    initiate_key_exchange()

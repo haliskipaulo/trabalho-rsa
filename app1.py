@@ -9,14 +9,11 @@ from rsa import get_keys, encrypt, decrypt
 from flask import Flask, request, jsonify
 import requests as req
 from time import sleep
+import threading
+import time
 
 app = Flask(__name__)
 
-keys = get_keys()
-
-N_app1 = keys[0]
-E_app1 = keys[1]
-D = keys[2]
 
 URL_APP2 = 'http://localhost:5001'
 
@@ -99,17 +96,43 @@ def initiate_key_exchange():
     except Exception as e:
         print(f"Ocorreu um erro inesperado: {e}")
 
-@app.route('/start_key_exchange', methods=['GET'])
-def start_key_exchange_endpoint(): 
-    print("Iniciando troca de chaves...")
 
-    try:
-        response_data = initiate_key_exchange()
-        return jsonify({"status": "Key exchange initiated", "response_from_other_app": response_data}), 200
-    except Exception as e:
-        return jsonify({"status": "Error during key exchange", "error": str(e)}), 500
+def attemp_key_exchange():
+    max_tries = 3
+    delay = 10
+
+    payload = {"N": N_app1, "E": E_app1}
+
+    for num in range(max_tries):
+        try:
+            response = req.post(f"{URL_APP2}/share_keys", json=payload, timeout=10)
+            response.raise_for_status()
+            return
+        except req.exceptions.ConnectionError as e:
+            print(f"Erro de conexão ao enviar chaves")
+        except req.exceptions.Timeout as e:
+            print(f"Timeout ao enviar chaves")
+        except req.exceptions.RequestException as e:
+            print(f"Erro na requisição ao enviar chaves")
+        except Exception as e:
+            print("erro")
+        
+        if num < max_tries - 1:
+            time.sleep(delay)
+
+def auto_key_exchange():
+    delay = 10
+    time.sleep(delay)
+    attemp_key_exchange()
+
 
 if __name__ == '__main__':
+    keys = get_keys()
+
+    N_app1 = keys[0]
+    E_app1 = keys[1]
+    D = keys[2]
+
     port = 5000
 
     sleep(5)
@@ -117,5 +140,8 @@ if __name__ == '__main__':
     print(f"Minhas chaves: N={N_app1}, E={E_app1}, D={D}")
     print(f"Aplicação rodando na porta {port}")
     print(f"A outra aplicação está em: {URL_APP2}")
+
+    key_exchange_thread = threading.Thread(target=initiate_key_exchange, daemon=True)
+    key_exchange_thread.start()
 
     app.run(debug=True, port=port, use_reloader=False)

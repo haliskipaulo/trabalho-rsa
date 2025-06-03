@@ -126,6 +126,26 @@ def auto_key_exchange():
     attemp_key_exchange()
 
 
+def message_sending():
+    global N_app2, E_app2
+
+    while True:
+        message_to_send = input("Digite sua mensagem (ou 'exit' para terminar): ")
+        if message_to_send.lower() == 'exit':
+            print("Encerrando chat...")
+            
+            break 
+        if not message_to_send.strip():
+            continue
+
+        encrypted_message = encrypt(message_to_send, N_app2, E_app2)
+        
+        payload = {"encrypted_message": encrypted_message}
+        
+        response = req.post(f"{URL_APP2}/receive_message", json=payload, timeout=10)
+        response.raise_for_status()
+        
+
 if __name__ == '__main__':
     keys = get_keys()
 
@@ -143,5 +163,8 @@ if __name__ == '__main__':
 
     key_exchange_thread = threading.Thread(target=initiate_key_exchange, daemon=True)
     key_exchange_thread.start()
+
+    sender_thread = threading.Thread(target=message_sending, daemon=True)
+    sender_thread.start()
 
     app.run(debug=True, port=port, use_reloader=False)
